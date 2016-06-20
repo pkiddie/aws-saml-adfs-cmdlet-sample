@@ -80,6 +80,10 @@ namespace AWSSAML
         }
 
         private int roleIndex = Int16.MaxValue;
+        private string userName;
+        private string password;
+        private string role;
+
         [Parameter(
             Mandatory = false,
             ValueFromPipeline = true,
@@ -93,6 +97,45 @@ namespace AWSSAML
             set { roleIndex = value; }
         }
 
+        [Parameter(
+           Mandatory = false,
+           ValueFromPipeline = true,
+           ValueFromPipelineByPropertyName = true,
+           Position = 3,
+           HelpMessage = "ADFS username"
+       )]
+        public string Username
+        {
+            get { return userName; }
+            set { userName = value; }
+        }
+
+        [Parameter(
+          Mandatory = false,
+          ValueFromPipeline = true,
+          ValueFromPipelineByPropertyName = true,
+          Position = 4,
+          HelpMessage = "ADFS password"
+      )]
+        public string Password
+        {
+            get { return password; }
+            set { password = value; }
+        }
+
+        [Parameter(
+          Mandatory = false,
+          ValueFromPipeline = true,
+          ValueFromPipelineByPropertyName = true,
+          Position = 3,
+          HelpMessage = "AWS role"
+      )]
+        public string Role
+        {
+            get { return role; }
+            set { role = value; }
+        }
+
         protected override void ProcessRecord()
         {
             try
@@ -100,7 +143,7 @@ namespace AWSSAML
                 AWSSAMLUtils awsSamlUtils = new AWSSAMLUtils();
                 SessionAWSCredentials awsSessionCredentials = null;
 
-                ICredentials userCredentials = AskUserForCredentials(useCurrentCredentials);
+                ICredentials userCredentials = GetUserCredentials(useCurrentCredentials);
 
                 Uri uri = new Uri(identityProviderUrl);
                 NetworkCredential networkCredentials = userCredentials.GetCredential(uri, "");
@@ -118,6 +161,11 @@ namespace AWSSAML
                 {
                     awsSamlRole = awsSamlRoles[roleIndex];
                 }
+                else if (!string.IsNullOrEmpty(role))
+                {
+                    awsSamlRole = awsSamlRoles.FirstOrDefault(p => p.Contains(role));
+                    if(awsSamlRole == null) throw new ArgumentException(string.Format("role {0} not found in list of available roles: {1}",role, string.Join(", ",awsSamlRoles)));
+                }
                 else
                 {
                     awsSamlRole = AskUserForAwsSamlRole(awsSamlRoles);
@@ -132,28 +180,42 @@ namespace AWSSAML
             }
         }
 
-        private ICredentials AskUserForCredentials(bool useCurrentCredentials)
+        private ICredentials GetUserCredentials(bool useCurrentCredentials)
         {
             if (useCurrentCredentials)
             {
                 return CredentialCache.DefaultCredentials;
             }
-            else
+
+            if (!(string.IsNullOrWhiteSpace(userName) || string.IsNullOrWhiteSpace(password)))
             {
-                string userName, password, domain = null;
+                var domain = string.Empty;
 
-                Console.Write("username: ");
-                userName = Console.ReadLine();
+                if (!userName.Contains('\\')) return new NetworkCredential(userName, password, domain);
 
-                Console.Write("password: ");
-                password = GetPasswordViaConsole();
-                Console.WriteLine();
-
-                Console.Write("domain: ");
-                domain = Console.ReadLine();
+                var domainAndUser = userName.Split(new[] {'\\'}, 2);
+                domain = domainAndUser[0];
+                userName = domainAndUser[1];
 
                 return new NetworkCredential(userName, password, domain);
             }
+
+            return AskUserForCredentials();
+        }
+
+        private ICredentials AskUserForCredentials()
+        {
+            Console.Write("username: ");
+            var user = Console.ReadLine();
+
+            Console.Write("password: ");
+            var pass = GetPasswordViaConsole();
+            Console.WriteLine();
+
+            Console.Write("domain: ");
+            var domain = Console.ReadLine();
+
+            return new NetworkCredential(user, pass, domain);
         }
 
         private string AskUserForAwsSamlRole(string[] awsSamlRoles)
