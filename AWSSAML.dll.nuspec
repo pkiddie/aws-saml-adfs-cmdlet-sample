@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>AWSSAML</id>
+    <version>0.0.0</version>
+    <authors>PaulK</authors>
+    <owners>PaulK</owners>
+    <projectUrl>https://github.com/pkiddie/aws-saml-adfs-cmdlet-sample</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>ADFS to SAML credential Powershell cmdlet</description>
+  </metadata>
+  <files>
+    <file src="AWSSAMLCredentials\AWSSAMLCredentials\bin\Release\*.dll" target="lib\net45" /> 
+  </files>
+</package>
